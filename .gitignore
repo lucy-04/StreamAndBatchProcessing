@@ -1,0 +1,25 @@
+# sbt / Scala build artifacts
+target/
+project/target/
+project/project/
+bin/
+*.class
+
+# Python environment
+.venv/
+__pycache__/
+*.py[cod]
+
+# Data files (often too large for Git)
+sales_data.csv
+
+# IDE specific (e.g., VS Code or IntelliJ)
+.vscode/
+.idea/
+*.iml
+.metals/
+.bloop/
+.bsp/
+
+# OS specific
+.DS_Store
