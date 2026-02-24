@@ -23,3 +23,7 @@
 ## start spark batch
 - export JAVA_HOME=$(/usr/libexec/java_home -v 11)
 - sbt "runMain BatchProcessor"    
+
+## start unified processor (batch + stream in single session)
+- export JAVA_HOME=$(/usr/libexec/java_home -v 11)
+- sbt "runMain UnifiedProcessor"
