@@ -10,10 +10,11 @@ bin/
 __pycache__/
 *.py[cod]
 
-# Data files (often too large for Git)
+# Data files
 sales_data.csv
+/data/
 
-# IDE specific (e.g., VS Code or IntelliJ)
+# IDE specific
 .vscode/
 .idea/
 *.iml
@@ -23,3 +24,7 @@ sales_data.csv
 
 # OS specific
 .DS_Store
+
+# uv
+scripts/.venv/
+scripts/uv.lock
