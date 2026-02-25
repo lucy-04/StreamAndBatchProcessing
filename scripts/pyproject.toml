@@ -1,0 +1,11 @@
+[project]
+name = "pipeline-scripts"
+version = "1.0.0"
+description = "Data generation scripts for the Unified Transaction Pipeline"
+requires-python = ">=3.10"
+dependencies = [
+    "kafka-python>=2.0.2",
+    "faker>=22.0",
+    "pyspark>=3.5.1",
+    "delta-spark>=3.1.0",
+]
