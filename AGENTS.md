@@ -83,10 +83,10 @@ Currently, developers maintain two separate codebases and two separate operation
 │  ┌────────────────────────────────────────────────────────────────┐  │
 │  │              Embedded HTTP Server (Pekko HTTP)                 │  │
 │  │                                                                │  │
-│  │  POST /stream/start          POST /batch/run                  │  │
-│  │  POST /stream/stop           GET  /batch/status/:batchId      │  │
-│  │  GET  /batch/data/:batchId   GET  /batch/data/:batchId/agg    │  │
-│  │  GET  /health                POST /stop                       │  │
+│  │  POST /stream/start          POST /batch/run                   │  │
+│  │  POST /stream/stop           GET  /batch/status/:batchId       │  │
+│  │  GET  /batch/data/:batchId   GET  /batch/data/:batchId/agg     │  │
+│  │  GET  /health                POST /stop                        │  │
 │  └───────────────────────────────┬────────────────────────────────┘  │
 │                                  │                                   │
 │  ┌───────────────────────────────▼────────────────────────────────┐  │
@@ -106,7 +106,7 @@ Currently, developers maintain two separate codebases and two separate operation
 │  ┌────────────────────────────────────────────────────────────────┐  │
 │  │                    Batch Registry (in-memory)                  │  │
 │  │  ConcurrentHashMap[batchId -> BatchJobRecord]                  │  │
-│  │  BatchJobRecord: {status, startTime, endTime, deltaPath,      │  │
+│  │  BatchJobRecord: {status, startTime, endTime, deltaPath,       │  │
 │  │                   rowCount, errorMsg, analysisType}            │  │
 │  └────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────┘
