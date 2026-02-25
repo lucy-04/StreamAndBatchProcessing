@@ -11,7 +11,7 @@ Kafka (transactions-stream)
         │
         ▼
 ┌──────────────────────────────────────────┐
-│         Spark Driver (JVM Process)        │
+│         Spark Driver (JVM Process)       │
 │                                          │
 │  ┌──────────────────────────────────┐    │
 │  │   Pekko HTTP Server (:8080)      │    │
@@ -19,19 +19,19 @@ Kafka (transactions-stream)
 │  └──────────┬───────────────────────┘    │
 │             │                            │
 │  ┌──────────▼───────────────────────┐    │
-│  │   SparkSession (FAIR Scheduler)   │    │
-│  │                                   │    │
-│  │  Streaming Query    Batch Jobs    │    │
+│  │   SparkSession (FAIR Scheduler)  │    │
+│  │                                  │    │
+│  │  Streaming Query    Batch Jobs   │    │
 │  │  Kafka → Delta      Delta → Agg  │    │
-│  │  (streaming-pool)   (batch-pool)  │    │
+│  │  (streaming-pool)   (batch-pool) │    │
 │  └──────────┬──────────┬────────────┘    │
 │             │          │                 │
 │  ┌──────────▼──────────▼────────────┐    │
-│  │       Delta Lake (ACID)           │    │
-│  │  stream/transactions/  (source)   │    │
-│  │  batches/{id}/raw/     (results)  │    │
-│  │  batches/{id}/aggregated/         │    │
-│  └───────────────────────────────────┘    │
+│  │       Delta Lake (ACID)          │    │
+│  │  stream/transactions/  (source)  │    │
+│  │  batches/{id}/raw/     (results) │    │
+│  │  batches/{id}/aggregated/        │    │
+│  └──────────────────────────────────┘    │
 └──────────────────────────────────────────┘
 ```
 
@@ -109,7 +109,7 @@ uv sync
 uv run python delta_lake_seeder.py
 ```
 
-This writes ~1M records to `/data/delta/stream/transactions/` so batch processing works immediately.
+This writes ~1M records to `data/delta/stream/transactions/` (project-relative) so batch processing works immediately.
 
 **Custom settings:**
 ```bash
@@ -270,7 +270,7 @@ Configuration uses [Typesafe Config](https://github.com/lightbend/config) (HOCON
 | `pipeline.spark.master` | `local[*]` | Spark master URL |
 | `pipeline.kafka.bootstrap-servers` | `localhost:9092` | Kafka broker |
 | `pipeline.kafka.stream-topic` | `transactions-stream` | Kafka topic |
-| `pipeline.delta.base-path` | `/data/delta` | Delta Lake root |
+| `pipeline.delta.base-path` | `data/delta` | Delta Lake root |
 | `pipeline.batch.thread-pool-size` | `8` | Max concurrent batch jobs |
 | `pipeline.batch.default-page-size` | `100` | Default pagination size |
 
