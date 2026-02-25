@@ -109,7 +109,7 @@ Currently, developers maintain two separate codebases and two separate operation
 │  │             ▼   │                                              │  │
 │  │  ┌──────────────────────────────────────────────────────────┐  │  │
 │  │  │          Delta Lake (source of truth)                    │  │  │
-│  │  │  /data/delta/stream/transactions/                        │  │  │
+│  │  │  data/delta/stream/transactions/                         │  │  │
 │  │  │  (partitioned by event_date, written by streaming)       │  │  │
 │  │  └──────────────────────────────────────────────────────────┘  │  │
 │  └────────────────────────────────────────────────────────────────┘  │
@@ -125,9 +125,9 @@ Currently, developers maintain two separate codebases and two separate operation
                ▼                                     ▼
 ┌──────────────────────────────┐  ┌──────────────────────────────────┐
 │       Delta Lake             │  │    Delta Lake (batch results)    │
-│   (streaming sink + batch    │  │    /data/delta/batches/{batchId} │
+│   (streaming sink + batch    │  │    data/delta/batches/{batchId}  │
 │    source — same table)      │  │                                  │
-│   /data/delta/stream/        │  │    JDBC Sink (PostgreSQL etc)    │
+│   data/delta/stream/         │  │    JDBC Sink (PostgreSQL etc)    │
 │   └── transactions/          │  │    (optional)                    │
 │   └── stream_aggregations/   │  │                                  │
 └──────────────────────────────┘  └──────────────────────────────────┘
@@ -142,7 +142,7 @@ Currently, developers maintain two separate codebases and two separate operation
 | **SparkSession (FAIR Scheduler)** | Single entry point for all Spark operations. `spark.scheduler.mode=FAIR` ensures streaming and batch jobs share resources concurrently. |
 | **Analysis Aggregator** | A Scala object containing reusable Spark DataFrame transformation functions (§7). Both streaming and batch jobs invoke the same aggregator functions to ensure analytical consistency. |
 | **Batch Registry** | A thread-safe `ConcurrentHashMap[String, BatchJobRecord]` that tracks every submitted batch job's lifecycle: `PENDING → RUNNING → COMPLETED / FAILED`. Stores the Delta path so results can be read back by batch ID. |
-| **Delta Lake** | ACID-compliant Lakehouse that serves as **both the streaming sink and the batch source**. Streaming writes to `/data/delta/stream/transactions/`. Batch jobs **read from this same table** (filtered by date range, category, region, etc.) and write analysis results to `/data/delta/batches/{batchId}/`. This means batch processing always operates on the canonical, schema-enforced, deduplicated dataset — not raw Kafka offsets. Enables time-travel queries, partition pruning, and schema enforcement. |
+| **Delta Lake** | ACID-compliant Lakehouse that serves as **both the streaming sink and the batch source**. Streaming writes to `data/delta/stream/transactions/`. Batch jobs **read from this same table** (filtered by date range, category, region, etc.) and write analysis results to `data/delta/batches/{batchId}/`. This means batch processing always operates on the canonical, schema-enforced, deduplicated dataset — not raw Kafka offsets. Enables time-travel queries, partition pruning, and schema enforcement. |
 
 ### Data Flow — Streaming Path (Kafka → Delta Lake)
 
@@ -160,7 +160,7 @@ Currently, developers maintain two separate codebases and two separate operation
 3. On a separate thread (from a fixed thread pool), Spark reads from the **streaming Delta table**:
    ```
    spark.read.format("delta")
-     .load("/data/delta/stream/transactions")
+     .load("data/delta/stream/transactions")
      .filter(col("event_date").between(startDate, endDate))
    ```
    Additional filters (category, region, etc.) are applied via partition pruning and predicate pushdown.
@@ -435,7 +435,7 @@ pipeline {
 
   spark {
     master = "local[*]"              # Override in production: spark://host:7077 or k8s://...
-    checkpoint-dir = "/data/checkpoints"
+    checkpoint-dir = "data/checkpoints"
     fair-scheduler-file = "conf/fairscheduler.xml"
   }
 
@@ -446,7 +446,7 @@ pipeline {
   }
 
   delta {
-    base-path = "/data/delta"
+    base-path = "data/delta"
     stream-transactions-path = ${pipeline.delta.base-path}"/stream/transactions"   # Streaming sink AND batch source
     stream-aggregations-path = ${pipeline.delta.base-path}"/stream/stream_aggregations"
     batch-base-path = ${pipeline.delta.base-path}"/batches"
@@ -574,7 +574,7 @@ case class BatchJobRecord(
 - Reads source data from the **streaming Delta table**:
   ```
   val sourceDf = spark.read.format("delta")
-    .load(sourcePath)                                         // e.g., /data/delta/stream/transactions
+    .load(sourcePath)                                         // e.g., data/delta/stream/transactions
     .filter(col("event_date").between(startDate, endDate))    // partition pruning on event_date
   ```
 - Applies optional filters (if provided): e.g., `.filter(col("category") === "electronics")`, `.filter(col("region") === "west")`.
@@ -1069,7 +1069,7 @@ The `BatchJob` selects the aggregator function based on the `analysisType` strin
 ### 8.1 Directory Layout
 
 ```
-/data/delta/
+data/delta/
 ├── stream/
 │   ├── transactions/                      ← Raw streaming events (append-only)
 │   │   ├── event_date=2025-01-15/         ← ALSO the source table for batch processing
@@ -1112,7 +1112,7 @@ The batch **source read** flow (step 3 of the Batch Path in §3) is:
    ```
    val sourceDf = spark.read
      .format("delta")
-     .load("/data/delta/stream/transactions")              // the streaming Delta table
+     .load("data/delta/stream/transactions")               // the streaming Delta table
      .filter(col("event_date").between(startDate, endDate)) // partition pruning — only scans relevant date partitions
    ```
 3. **Apply optional filters** (from the `filters` field in the request):
@@ -1138,13 +1138,13 @@ The batch **result retrieval** flow is:
    ```
    val rawDf = spark.read
      .format("delta")
-     .load(record.deltaRawPath.get)     // e.g., /data/delta/batches/{batchId}/raw
+     .load(record.deltaRawPath.get)     // e.g., data/delta/batches/{batchId}/raw
    ```
 4. **Read Aggregated Results:**
    ```
    val aggDf = spark.read
      .format("delta")
-     .load(record.deltaAggPath.get)     // e.g., /data/delta/batches/{batchId}/aggregated
+     .load(record.deltaAggPath.get)     // e.g., data/delta/batches/{batchId}/aggregated
    ```
 5. **Pagination:** Apply limit/offset:
    ```
@@ -1165,8 +1165,8 @@ For production, periodic maintenance should be scheduled (e.g., via a cron batch
 
 | Operation | Command | Frequency | Purpose |
 |---|---|---|---|
-| OPTIMIZE | `OPTIMIZE delta.\`/data/delta/stream/transactions\`` | Every 6 hours | Compact small files from streaming micro-batches into larger Parquet files. |
-| VACUUM | `VACUUM delta.\`/data/delta/stream/transactions\` RETAIN 168 HOURS` | Daily | Remove old file versions beyond 7-day retention. |
+| OPTIMIZE | `OPTIMIZE delta.\`data/delta/stream/transactions\`` | Every 6 hours | Compact small files from streaming micro-batches into larger Parquet files. |
+| VACUUM | `VACUUM delta.\`data/delta/stream/transactions\` RETAIN 168 HOURS` | Daily | Remove old file versions beyond 7-day retention. |
 | Z-ORDER | `OPTIMIZE ... ZORDER BY (customer_id, category)` | Weekly | Co-locate data for common query patterns. |
 | DESCRIBE HISTORY | `DESCRIBE HISTORY delta.\`path\`` | On-demand | Audit trail of all operations on a table. |
 
@@ -1178,12 +1178,12 @@ Delta Lake supports reading historical versions of data. This is useful for debu
 // Read batch data as it was at a specific version
 spark.read.format("delta")
   .option("versionAsOf", 3)
-  .load("/data/delta/batches/{batchId}/raw")
+  .load("data/delta/batches/{batchId}/raw")
 
 // Read batch data as it was at a specific timestamp
 spark.read.format("delta")
   .option("timestampAsOf", "2025-01-15T14:00:00Z")
-  .load("/data/delta/batches/{batchId}/raw")
+  .load("data/delta/batches/{batchId}/raw")
 ```
 
 ---
@@ -1238,7 +1238,7 @@ spark.read.format("delta")
   "batchId": "batch-20250115-a3f8e2b1",
   "status": "COMPLETED",
   "analysisType": "revenue_by_category",
-  "sourcePath": "/data/delta/stream/transactions",
+  "sourcePath": "data/delta/stream/transactions",
   "startDate": "2025-01-01",
   "endDate": "2025-01-15",
   "filters": {
@@ -1249,8 +1249,8 @@ spark.read.format("delta")
   "startTime": "2025-01-15T14:00:01Z",
   "endTime": "2025-01-15T14:02:35Z",
   "rowCount": 1584230,
-  "deltaRawPath": "/data/delta/batches/batch-20250115-a3f8e2b1/raw",
-  "deltaAggPath": "/data/delta/batches/batch-20250115-a3f8e2b1/aggregated",
+  "deltaRawPath": "data/delta/batches/batch-20250115-a3f8e2b1/raw",
+  "deltaAggPath": "data/delta/batches/batch-20250115-a3f8e2b1/aggregated",
   "errorMessage": null
 }
 ```
@@ -1434,7 +1434,7 @@ EVENTS_PER_SECOND=50 KAFKA_TOPIC=transactions-stream python kafka_stream_generat
 
 ### 10.2 Delta Lake Historical Seeder (`scripts/delta_lake_seeder.py`)
 
-This PySpark script generates a large volume of historical transaction data and writes it directly to the **streaming Delta Lake table** (`/data/delta/stream/transactions/`). This pre-populates the table with historical data so that batch processing can run immediately — even before the streaming pipeline has accumulated enough real-time data.
+This PySpark script generates a large volume of historical transaction data and writes it directly to the **streaming Delta Lake table** (`data/delta/stream/transactions/`). This pre-populates the table with historical data so that batch processing can run immediately — even before the streaming pipeline has accumulated enough real-time data.
 
 **Dependencies:** `pip install pyspark delta-spark faker`
 
@@ -1442,8 +1442,8 @@ This PySpark script generates a large volume of historical transaction data and 
 - Generates a configurable number of historical records (default: 1,000,000).
 - Spans a configurable date range (default: last 90 days).
 - Uses the exact same `TransactionEvent` schema as the Kafka generator.
-- Writes to the **streaming transactions Delta table** at `/data/delta/stream/transactions/` partitioned by `event_date` (using `mode("append")` to coexist with streaming data).
-- Alternatively, can write to a separate seed path `/data/delta/seed/transactions/` if isolation is preferred (configurable).
+- Writes to the **streaming transactions Delta table** at `data/delta/stream/transactions/` partitioned by `event_date` (using `mode("append")` to coexist with streaming data).
+- Alternatively, can write to a separate seed path `data/delta/seed/transactions/` if isolation is preferred (configurable).
 
 **Configuration (environment variables):**
 
@@ -1451,8 +1451,8 @@ This PySpark script generates a large volume of historical transaction data and 
 |---|---|---|
 | `TOTAL_RECORDS` | `1000000` | Number of records to generate |
 | `DATE_RANGE_DAYS` | `90` | How many days of history to generate |
-| `DELTA_OUTPUT_PATH` | `/data/delta/stream/transactions` | Delta Lake output path (defaults to the streaming table so batch can read immediately) |
-| `SEED_SEPARATE` | `false` | If `true`, write to `/data/delta/seed/transactions/` instead of the streaming table |
+| `DELTA_OUTPUT_PATH` | `data/delta/stream/transactions` | Delta Lake output path (defaults to the streaming table so batch can read immediately) |
+| `SEED_SEPARATE` | `false` | If `true`, write to `data/delta/seed/transactions/` instead of the streaming table |
 | `SPARK_MASTER` | `local[*]` | Spark master URL |
 
 **Algorithm:**
@@ -1470,7 +1470,7 @@ This PySpark script generates a large volume of historical transaction data and 
      .format("delta")
      .partitionBy("event_date")
      .mode("append")           # append so it coexists with streaming data
-     .save(delta_output_path)  # defaults to /data/delta/stream/transactions
+     .save(delta_output_path)  # defaults to data/delta/stream/transactions
    ```
 6. Print summary statistics:
    - Total records written
