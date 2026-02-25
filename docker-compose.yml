@@ -8,7 +8,7 @@ services:
     ports:
       - "2181:2181"
     healthcheck:
-      test: [ "CMD", "echo", "ruok", "|", "nc", "127.0.0.1", "2181" ]
+      test: ["CMD", "echo", "ruok", "|", "nc", "127.0.0.1", "2181"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,7 +31,13 @@ services:
       zookeeper:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
+      test:
+        [
+          "CMD",
+          "kafka-broker-api-versions",
+          "--bootstrap-server",
+          "localhost:9092",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,6 +55,22 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080" # REST API
+      - "4040:4040" # Spark UI
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+    volumes:
+      - ./data:/opt/spark/data # Delta Lake tables + checkpoints persisted on host
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: on-failure
 
 volumes:
   kafka-data:
