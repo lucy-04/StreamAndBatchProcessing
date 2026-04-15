@@ -217,7 +217,7 @@ curl -X POST http://localhost:8080/batch/run \
 
 **Check batch status:**
 ```bash
-curl -s http://localhost:8080/batch/status/<batchId> | python3 -m json.tool
+curl -s http://localhost:8080/batch/status/<ba tchId>| python3 -m json.tool
 ```
 
 **Get raw batch data** (paginated):
